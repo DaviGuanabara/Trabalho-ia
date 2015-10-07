@@ -1,0 +1,358 @@
+package algoritmo;
+
+import java.awt.Point;
+
+public class Ladrao extends ProgramaLadrao {
+
+	//================================================================================
+	// Variáveis Importantes. 
+	//================================================================================
+
+	public static final int NoOp = 0;
+	public static final int Cima = 1;
+	public static final int Baixo = 2;
+	public static final int Direita = 3;
+	public static final int Esquerda = 4;
+
+
+	//Contador e id
+	private static int cont = 0;		
+	//Só inicializando a variavel msm
+	public int id = -1;
+
+
+
+	//================================================================================
+	// Controle de Grupo e seus métodos acessórios. 
+	//================================================================================
+
+	/*Na matriz Alvo, de Point, a posicao da coluna faz referencia à id do ladrão. 
+	 * Dessa forma, os objetos Point da primeira linha são as posições atuais dos ladões
+	 * e os da segunda linha são as posições dos alvos marcados.
+	 * 
+	 *  Exemplo:
+	 *  ==========================================================================
+	 *   Obs1: Após o debug, conferi algo estranho, são criados 8 ladrões no total,
+	 *   e só os ultimos 4 ladrões são os que são usados no jogo.  o.o
+	 *   Dessa forma, é necessário subtrair 4 do contador (após o msm ter chegado a 4),
+	 *   antes de pega-lo como id.
+	 *  ==========================================================================
+	 *   
+	 *  Só são possíveis essas 4 identidades:
+	 *  id's: 0,1,2,3
+	 *  
+	 *  Posição: 00 10 20 30
+	 *           01 11 21 31
+	 *  
+	 *  O objeto da posição 00 retorna a posição atual do ladrão de id 0;
+	 *  O objeto da posição 10 retorna a posição atual do ladrão de id 1;
+	 *  e assim por diante.
+	 *  
+	 *  Já na segunda linha, temos:
+	 *  O objeto da posicao 01 retorna o alvo do ladrão de id 0;
+	 *  O objeto da posicao 11 retorna o alvo do ladrão de id 1;
+	 *  
+	 *  
+	 */
+
+	//A linha 0 está relacionado com a posição dos ladrões.
+	// A linha 1 está relacionada com as posições dos alvos.
+	public static final int ladroes = 0;
+	public static final int alvos = 1;
+
+	public static Point[][] Alvos = new Point[4][2];
+
+	//Verifica se a id é valida
+	public static boolean idValida(int id){
+		if(id<0||id>3) return false;
+		else return true;
+	}
+
+	//Ajusta o alvo de uma id específica
+	public boolean setAlvo(int id,Point alvo){
+
+		//Se a id for invalida, retorna false.
+		if(!idValida(id)) return false;
+
+		//Se o alvo for nulo, retorna false.
+		if(alvo == null) return false;
+
+		//Se fora dos limites do mapa
+		if(!dentroDosLimitesMapa(alvo)) return false;
+		Alvos[id][alvos] = alvo;
+
+		return true;
+	}
+
+	//Ajusta a posição de uma id específica
+	public boolean setPosicao(int id, Point posicao){
+		//Se a id for invalida, retorna false.
+		if(!idValida(id)) return false;
+
+		//Se o alvo for nulo, retorna false.
+		if(posicao == null) return false;
+
+		//Se fora dos limites do mapa
+		if(!dentroDosLimitesMapa(posicao)) return false;
+
+		Alvos[id][ladroes] = posicao;
+		return true;
+	}
+
+	//Pega a posição de uma id específica
+	public static Point getPosicao(int id){
+		if(id<0||id>3) return null;
+		else return Alvos[id][ladroes];
+	}
+
+
+	//================================================================================
+	// Mapa e seus métodos acessórios. 
+	//================================================================================
+
+
+	//Limites do mapa:
+	public static final int Linhas = 30;
+	public static final int Colunas = 30;
+
+	//O mapa em si:
+	private static int[][] mapa = new int[Linhas][Colunas];
+
+	//Pega o objeto relativo a posição passada.
+	public static int getObjeto(Point posicao) {
+		//Se os limites do mapa forem respeitados, retorna o objeto !
+		if (posicao.x<Colunas && posicao.x>=0 && posicao.y<Linhas && posicao.y>=0) {
+			return mapa[posicao.x][posicao.y];
+		} else return 0;
+	}
+
+	//Método para adicionar um vetor de int no mapa
+	private void addMapa(int[] visao) {
+		//Essa função tem o objetivo de adicionar no mapa os objetos
+
+		/*Posição do vetor
+		 * 
+		 *  0  1  2  3  4
+		 *  5  6  7  8  9 
+		 * 10 11    12 13
+		 * 14 15 16 17 18
+		 * 19 20 21 22 23
+		 * 
+		 */
+
+		//A variável i é a posição do vetor.
+		for(int i=0; i<visao.length; i++) {
+
+			Point ponto = transformarEmPosicaoAbsoluta(i);
+			if (ponto != null) {
+				//Adicionar no mapa
+				mapa[ponto.x][ponto.y] = visao[i];
+			}
+		}
+	}
+
+	//Pega a posição relativa ao agente e transforma em posição absoluta do mapa
+	private Point transformarEmPosicaoAbsoluta(int posicaoDoVetor){
+
+		/*Posição do vetor
+		 * 
+		 *  0  1  2  3  4
+		 *  5  6  7  8  9 
+		 * 10 11    12 13
+		 * 14 15 16 17 18
+		 * 19 20 21 22 23
+		 * 
+		 * Significado dos valores retornados
+		 * 
+		    -2                  Sem visão do local 
+		    -1                  Fora do ambiente (mundo exterior) 
+			 0                  Célula vazia (sem nenhum agente) 
+			 1                  Parede 
+			 3                  Banco 
+			 4                  Moeda 
+			 5                  Pastilha do Poder 
+			 100, 110           Poupadores 
+			 200,210,220,230    Ladrões
+		 *
+		 */
+
+		//Para menor que 12:
+
+		/* Dividindo a posicao do vetor por 5, temos:
+		 * 
+		 * A parte inteira, sendo a linha
+		 * 
+		 * 1ª Linha = 0
+		 * 2ª Linha = 1
+		 *      .
+		 *      .
+		 *      .
+		 * 5ª Linha = 4      
+		 * 
+		 * 
+		 */
+
+		/*Subtraindo por multiplo de 5, mas impedindo que seja negativo, temos:
+		 * 
+		 * Se posicaoDoVetor == 19
+		 * 
+		 * 4 = 19 - 15 (O 15 é o maior multiplo de 5 menor que a posicaoDoVetor,ou seja 19)
+		 * 
+		 * logo, coluna == 4 
+		 * 
+		 */
+
+		//Como o centro da matriz é vazio, podemos conpensar o valor da posicao
+		//do vetor a partir do valor 12 aumentando 1 unidade
+
+		Point posicao;
+
+		if (posicaoDoVetor<12) {
+
+			posicao = calculoPosicaoRelativa(posicaoDoVetor);
+
+		} else {
+
+			posicao = calculoPosicaoRelativa(posicaoDoVetor+1);
+		}
+
+		/*A posição dada acima é relativa a posição do agente.
+		 * 
+		 * Devemos, portanto, relaciona-la com a posição do ambiente.
+		 * 
+		 * A posição relativa [0,0] está distante [2,2] do agente, portanto, a
+		 * posição do objeto é igual a:
+		 *  posição relativa ao agente + posição do agente - [2,2] 
+		 */
+
+		int x = posicao.x + sensor.getPosicao().x - 2;
+		int y = posicao.y + sensor.getPosicao().y - 2;
+
+		Point novaPosicao = new Point(x, y);
+
+		//Porém, se o agente estiver nos cantos do mapa, a posicao absoluta
+		// poderá referenciar fora do mapa, portanto,  
+		//0<=x<=30  0<=y<=30
+
+		if (dentroDosLimitesMapa(novaPosicao)) {
+
+			return novaPosicao;
+
+		} else return null;
+	}
+
+	private Point calculoPosicaoRelativa(int posicaoDoVetor) {
+
+		int linha = 0;
+		int coluna = 0;
+
+		/*Posição do vetor
+		 * 
+		 *  0  1  2  3  4
+		 *  5  6  7  8  9 
+		 * 10 11    12 13
+		 * 14 15 16 17 18
+		 * 19 20 21 22 23
+		 * 
+		 */
+
+		linha = (int) posicaoDoVetor/5;
+		int multiploDe5=0;
+
+		// Vai ficar add 5 em 5, e vai passar do valor da posicaoDeVetor
+		while(multiploDe5<posicaoDoVetor) {
+			multiploDe5 += 5;
+		}
+
+		//Para conpensar a quantidade que passou, subtrair 5.
+		multiploDe5 -= 5;
+
+		coluna = posicaoDoVetor - multiploDe5;
+
+		return new Point(coluna,linha);  
+	}
+
+	//Se a posição passada estar dentro do mapa, retorna true.
+	public static boolean dentroDosLimitesMapa(Point posicao) {
+
+		int x = posicao.x;
+		int y = posicao.y;
+
+		if(x < Colunas && x >= 0 && y < Linhas && y >= 0) return true;
+		else return false;
+	}
+
+	//================================================================================
+	// Métodos adicionais
+	//================================================================================
+
+	/**Os métodos abaixo retornam a próxima posição
+	 * dado uma posição específica.
+	 * 
+	 * Exemplo: o proximoCima retorna a proxima posição acima da posição passada
+	 * 
+	 * Objetivo: Evitar ter que repetir y-1 e um provável erro.
+	 * 
+	 * @param posicao
+	 * @return
+	 */
+	public static Point proximoCima(Point posicao){
+
+		return new Point(posicao.x,posicao.y-1);
+	}
+
+	public static Point proximoBaixo(Point posicao){
+
+		return new Point(posicao.x,posicao.y+1);
+	}
+
+	public static Point proximoDireita(Point posicao){
+		return new Point(posicao.x+1,posicao.y);
+	}
+
+	public static Point proximoEsquerda(Point posicao){
+		return new Point(posicao.x-1,posicao.y);
+	}
+
+	
+	//================================================================================
+	// Distância Manhattan. 
+	//================================================================================
+
+	public static Integer distanciaManhattan(Point a, Point b) {
+
+		return new Double(Math.abs(a.getX() - b.getX())).intValue()
+
+				+ new Double(Math.abs(a.getY() - b.getY())).intValue();
+
+	}
+
+
+	//================================================================================
+	// Métodos Do Ladrão 
+	//================================================================================
+
+	//Aqui, irá ser gerado uma id específica para cada ladrão.
+	public Ladrao(){
+		super();
+		//Zerar
+
+		//Não sei o motivo, mas o debug mostrou que são criados 8 objetos ladrao no jogo,
+		// e só os ultimos 4 são usados, portanto, para não dar pau, devemos diminuir 4 do contador,
+		//para assim ter as id's: 0, 1, 2, 3, 4.
+
+		if(cont >=4){
+			id =(cont-4);}
+		else{
+			cont++;
+
+		}
+
+
+	}
+
+	public int acao() {
+		return (int) (Math.random() * 5);
+	}
+
+}
